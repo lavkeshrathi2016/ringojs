@@ -3,7 +3,7 @@ const Context = require("./context");
 const {JsgiServlet} = org.ringojs.jsgi;
 const {JettyWebSocketServlet, JettyWebSocketCreator} = org.eclipse.jetty.websocket.server;
 const {JettyWebSocketServletContainerInitializer} = org.eclipse.jetty.websocket.server.config;
-const {EventSourceServlet} = org.eclipse.jetty.servlets;
+const {EventSourceServlet} = org.eclipse.jetty.ee9.servlets;
 const EventSource = require("../eventsource");
 const WebSocket = require("../websocket");
 

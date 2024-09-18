@@ -1,5 +1,6 @@
 const log = require("ringo/logging").getLogger(module.id);
-const {ServletContextHandler, ServletHolder, FilterHolder} = org.eclipse.jetty.servlet;
+// const {ServletContextHandler, ServletHolder, FilterHolder} = org.eclipse.jetty.servlet;
+const {ServletContextHandler, ServletHolder, FilterHolder} = org.eclipse.jetty.ee9.servlet;
 const {StatisticsHandler} = org.eclipse.jetty.server.handler;
 const {EnumSet} = java.util;
 const {DispatcherType} = Packages.jakarta.servlet;

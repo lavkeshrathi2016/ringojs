@@ -5,16 +5,17 @@
  */
 const log = require('ringo/logging').getLogger(module.id);
 const {XmlConfiguration} = org.eclipse.jetty.xml;
-const {Resource} = org.eclipse.jetty.util.resource;
+const {PathResourceFactory} = org.eclipse.jetty.util.resource;
 const {Server, HttpConfiguration, HttpConnectionFactory,
         ServerConnector, SslConnectionFactory,
-        SecureRequestCustomizer, ServerConnectionStatistics} = org.eclipse.jetty.server;
-const {HandlerCollection, ContextHandlerCollection} = org.eclipse.jetty.server.handler;
+        SecureRequestCustomizer, Handler} = org.eclipse.jetty.server;
+const {ContextHandlerCollection} = org.eclipse.jetty.server.handler;
+// const {HandlerCollection} = org.eclipse.jetty.ee9.nested;
 const {ConnectionStatistics} = org.eclipse.jetty.io;
 const {HttpVersion, HttpCookie} = org.eclipse.jetty.http;
-const {DefaultSessionIdManager} = org.eclipse.jetty.server.session;
+const {DefaultSessionIdManager, HouseKeeper} = org.eclipse.jetty.session;
 const {SslContextFactory} = org.eclipse.jetty.util.ssl;
-
+const {Long} = java.lang;
 const objects = require("ringo/utils/objects");
 const ApplicationContext = require("./context/application");
 const StaticContext = require("./context/static");
@@ -88,7 +89,7 @@ HttpServer.prototype.configure = function(xmlPath) {
     if (!Files.exists(path)) {
         throw Error('Jetty XML configuration "' + xmlPath + '" not found');
     }
-    return this.xmlConfig = new XmlConfiguration(Resource.newResource(path));
+    return this.xmlConfig = new XmlConfiguration(new PathResourceFactory().newResource(path));
 };
 
 /**
@@ -300,7 +301,8 @@ HttpServer.prototype.createHttpsListener = function(options) {
 HttpServer.prototype.getHandlerCollection = function() {
     let handlerCollection = this.jetty.getHandler();
     if (handlerCollection === null) {
-        handlerCollection = new HandlerCollection();
+        handlerCollection = new Handler.Sequence();
+        // handlerCollection = new HandlerCollection();
         this.jetty.setHandler(handlerCollection);
     }
     return handlerCollection;
@@ -315,7 +317,7 @@ HttpServer.prototype.getHandlerCollection = function() {
 HttpServer.prototype.getContextHandlerCollection = function() {
     const handlerCollection = this.getHandlerCollection();
     let contextHandlerCollection =
-            handlerCollection.getChildHandlerByClass(ContextHandlerCollection);
+            handlerCollection.getDescendant(Handler.Sequence);
     if (contextHandlerCollection === null) {
         contextHandlerCollection = new ContextHandlerCollection();
         handlerCollection.addHandler(contextHandlerCollection);
@@ -350,7 +352,15 @@ HttpServer.prototype.enableSessions = function(options) {
     // if random is null, jetty will fall back to a SecureRandom in its initRandom()
     const sessionIdManager = new DefaultSessionIdManager(this.jetty, options.random || null);
     sessionIdManager.setWorkerName(options.name || "node1");
-    this.jetty.setSessionIdManager(sessionIdManager);
+
+    let houseKeeper = new HouseKeeper();
+    houseKeeper.setSessionIdManager(sessionIdManager);
+    houseKeeper.setIntervalSec(new Long(600));
+    sessionIdManager.setSessionHouseKeeper(houseKeeper);
+
+    this.jetty.addBean(sessionIdManager);
+
+    // this.jetty.setSessionIdManager(sessionIdManager);
     return sessionIdManager;
 };
 /**
@@ -374,7 +384,7 @@ HttpServer.prototype.serveApplication = function(mountpoint, app, options) {
         "security": options.security !== false,
         "sessions": options.sessions !== false,
         "sessionsMaxInactiveInterval": options.sessionsMaxInactiveInterval || null,
-        "cookieName": options.cookieName || null,
+        "cookieName": options.cookieName || "JSESSIONID",
         "cookieDomain": options.cookieDomain || null,
         "cookiePath": options.cookiePath || null,
         "cookieMaxAge": options.cookieMaxAge || -1,
@@ -443,7 +453,7 @@ HttpServer.prototype.serveStatic = function(mountpoint, directory, options) {
  * @see <a href="../builder/index.html#HttpServerBuilder.prototype.enableConnectionStatistics">HttpServerBuilder.enableConnectionStatistics()</a>
  */
 HttpServer.prototype.enableConnectionStatistics = function() {
-    ServerConnectionStatistics.addToAllConnectors(this.jetty);
+    this.jetty.addBeanToAllConnectors(new ConnectionStatistics());
 };
 
 /**
