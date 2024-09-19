@@ -9,8 +9,7 @@ const {PathResourceFactory} = org.eclipse.jetty.util.resource;
 const {Server, HttpConfiguration, HttpConnectionFactory,
         ServerConnector, SslConnectionFactory,
         SecureRequestCustomizer, Handler} = org.eclipse.jetty.server;
-const {ContextHandlerCollection} = org.eclipse.jetty.server.handler;
-// const {HandlerCollection} = org.eclipse.jetty.ee9.nested;
+const {ContextHandlerCollection, DefaultHandler} = org.eclipse.jetty.server.handler;
 const {ConnectionStatistics} = org.eclipse.jetty.io;
 const {HttpVersion, HttpCookie} = org.eclipse.jetty.http;
 const {DefaultSessionIdManager, HouseKeeper} = org.eclipse.jetty.session;
@@ -33,6 +32,7 @@ const HttpServer = module.exports = function HttpServer(options) {
     }
 
     const jetty = new Server();
+    jetty.setDefaultHandler(new DefaultHandler());
 
     let xmlConfig = null;
 
@@ -302,7 +302,6 @@ HttpServer.prototype.getHandlerCollection = function() {
     let handlerCollection = this.jetty.getHandler();
     if (handlerCollection === null) {
         handlerCollection = new Handler.Sequence();
-        // handlerCollection = new HandlerCollection();
         this.jetty.setHandler(handlerCollection);
     }
     return handlerCollection;
@@ -317,13 +316,22 @@ HttpServer.prototype.getHandlerCollection = function() {
 HttpServer.prototype.getContextHandlerCollection = function() {
     const handlerCollection = this.getHandlerCollection();
     let contextHandlerCollection =
-            handlerCollection.getDescendant(Handler.Sequence);
+            handlerCollection.getDescendant(ContextHandlerCollection);
     if (contextHandlerCollection === null) {
         contextHandlerCollection = new ContextHandlerCollection();
-        handlerCollection.addHandler(contextHandlerCollection);
+        prependHandler(contextHandlerCollection, handlerCollection);
     }
     return contextHandlerCollection;
 };
+
+function prependHandler(handler, handlers) {
+    if (handler == null || handlers == null) {
+        return;
+    }
+    const existing = handlers.getHandlers();
+    const children = [handler].concat(existing);
+    handlers.setHandlers(children);
+}
 
 /**
  * Adds a context and starts it
@@ -384,7 +392,7 @@ HttpServer.prototype.serveApplication = function(mountpoint, app, options) {
         "security": options.security !== false,
         "sessions": options.sessions !== false,
         "sessionsMaxInactiveInterval": options.sessionsMaxInactiveInterval || null,
-        "cookieName": options.cookieName || "JSESSIONID",
+        "cookieName": options.cookieName || null,
         "cookieDomain": options.cookieDomain || null,
         "cookiePath": options.cookiePath || null,
         "cookieMaxAge": options.cookieMaxAge || -1,
@@ -395,7 +403,7 @@ HttpServer.prototype.serveApplication = function(mountpoint, app, options) {
         "virtualHosts": options.virtualHosts
     };
     const parentContainer = this.getContextHandlerCollection();
-    const context = new ApplicationContext(parentContainer, mountpoint, options);
+    const context = new ApplicationContext(this.jetty, parentContainer, mountpoint, options);
     context.serve(app);
     return this.addContext(context);
 };
@@ -430,20 +438,28 @@ HttpServer.prototype.serveStatic = function(mountpoint, directory, options) {
         "otherGzipFileExtensions": options.gzipExtensions || null
     };
     const parentContainer = this.getContextHandlerCollection();
-    const context = new StaticContext(parentContainer, mountpoint, {
-            "security": options.security === true,
-            "sessions": options.sessions === true,
-            "sessionsMaxInactiveInterval": options.sessionsMaxInactiveInterval || null,
-            "cookieName": options.cookieName || null,
-            "cookieDomain": options.cookieDomain || null,
-            "cookiePath": options.cookiePath || null,
-            "cookieMaxAge": options.cookieMaxAge || -1,
-            "httpOnlyCookies": options.httpOnlyCookies !== false,
-            "secureCookies": options.secureCookies === true,
-            "sameSiteCookies": options.sameSiteCookies || null,
-            "statistics": options.statistics === true,
-            "virtualHosts": options.virtualHosts
-        });
+    const context = new StaticContext(this.jetty, parentContainer, mountpoint, {
+        "security": options.security === true,
+        "sessions": options.sessions === true,
+        "sessionsMaxInactiveInterval": options.sessionsMaxInactiveInterval || null,
+        "cookieName": options.cookieName || null,
+        "cookieDomain": options.cookieDomain || null,
+        "cookiePath": options.cookiePath || null,
+        "cookieMaxAge": options.cookieMaxAge || -1,
+        "httpOnlyCookies": options.httpOnlyCookies !== false,
+        "secureCookies": options.secureCookies === true,
+        "sameSiteCookies": options.sameSiteCookies || null,
+        "statistics": options.statistics === true,
+        "virtualHosts": options.virtualHosts,
+        "resourceHandler": true,
+        "acceptRanges": options.acceptRanges === true,
+        "dirAllowed": options.allowDirectoryListing === true,
+        "gzip": options.gzip === true,
+        "stylesheet": options.stylesheet || null,
+        "etags": options.etags !== false,
+        "cacheControl": options.cacheControl || null,
+        "otherGzipFileExtensions": options.gzipExtensions || null
+    });
     context.serve(directory, initParameters);
     return this.addContext(context);
 };

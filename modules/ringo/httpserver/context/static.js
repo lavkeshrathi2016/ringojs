@@ -1,7 +1,8 @@
 const log = require("ringo/logging").getLogger(module.id);
 const Context = require("./context");
-// const {DefaultServlet} = org.eclipse.jetty.servlet;
 const {Servlet} = Packages.jakarta.servlet;
+const {Paths} = java.nio.file;
+const {ResourceFactory} = org.eclipse.jetty.util.resource;
 
 /**
  * Static files context handler constructor
@@ -30,6 +31,10 @@ StaticContext.prototype.serve = function(directory, initParameters) {
     log.debug("Adding static handler {} -> {}",
             this.contextHandler.getContextPath(), directory);
     const repo = getRepository(directory);
-    this.contextHandler.setResourceBase(repo.exists() ? repo.getPath() : directory);
+
+    let resourceFactory = ResourceFactory.of(this.contextHandler);
+    let suffixroot = Paths.get(repo.exists() ? repo.getPath() : directory);
+    this.contextHandler.setBaseResource(resourceFactory.newResource(suffixroot));
+
     return this.addServlet("/*", Servlet, initParameters);
 };
