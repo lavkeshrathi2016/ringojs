@@ -1,11 +1,9 @@
 const log = require("ringo/logging").getLogger(module.id);
 const {ServletContextHandler, ServletHolder, FilterHolder} = org.eclipse.jetty.ee10.servlet;
-const {StatisticsHandler, ResourceHandler} = org.eclipse.jetty.server.handler;
+const {StatisticsHandler} = org.eclipse.jetty.server.handler;
 const {EnumSet} = java.util;
 const {DispatcherType} = Packages.jakarta.servlet;
 const {HttpCookie} = org.eclipse.jetty.http;
-const {ResourceFactory} = org.eclipse.jetty.util.resource;
-const {ArrayList} = java.util;
 
 /**
  * Base context handler constructor
@@ -26,31 +24,7 @@ const Context = module.exports = function Context(server, parentContainer, mount
         statisticsHandler.setHandler(oldHandler);
         server.setHandler(statisticsHandler);
     }
-    if (options.resourceHandler === true) {
-        let resourceHandler = new ResourceHandler();
-        resourceHandler.setDirAllowed(options.dirAllowed);
-        resourceHandler.setAcceptRanges(options.acceptRanges);
-        if (options.stylesheet) {
-            resourceHandler.setStyleSheet(ResourceFactory.of(resourceHandler).newResource(options.stylesheet));
-        }
-        resourceHandler.setEtags(options.etags);
-        if (options.cacheControl)   {
-            resourceHandler.setCacheControl(options.cacheControl);
-        }
-        if (options.otherGzipFileExtensions) {
-            let gzipFileExtensions = new ArrayList();
-            let gzipFileExtensionsArr = Array.isArray(options.otherGzipFileExtensions) ?  options.otherGzipFileExtensions : [options.otherGzipFileExtensions];
-            for (let i = 0; i < gzipFileExtensionsArr.length; i++) {
-                let str = String(gzipFileExtensionsArr[i]);
-                gzipFileExtensions.add(str);
-            }
-            resourceHandler.setGzipEquivalentFileExtensions(gzipFileExtensions);
-        }
-        let oldHandler = server.getHandler();
-        resourceHandler.setHandler(oldHandler);
-        server.setHandler(resourceHandler);
-    }
-    const contextHandler = new ServletContextHandler(mountpoint, options.sessions, options.security);
+    const contextHandler = new ServletContextHandler(mountpoint,  options.sessions, options.security);
     if (options.virtualHosts) {
         contextHandler.setVirtualHosts(Array.isArray(options.virtualHosts) ? options.virtualHosts : [String(options.virtualHosts)]);
     }

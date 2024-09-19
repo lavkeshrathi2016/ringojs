@@ -367,8 +367,6 @@ HttpServer.prototype.enableSessions = function(options) {
     sessionIdManager.setSessionHouseKeeper(houseKeeper);
 
     this.jetty.addBean(sessionIdManager);
-
-    // this.jetty.setSessionIdManager(sessionIdManager);
     return sessionIdManager;
 };
 /**
@@ -439,27 +437,19 @@ HttpServer.prototype.serveStatic = function(mountpoint, directory, options) {
     };
     const parentContainer = this.getContextHandlerCollection();
     const context = new StaticContext(this.jetty, parentContainer, mountpoint, {
-        "security": options.security === true,
-        "sessions": options.sessions === true,
-        "sessionsMaxInactiveInterval": options.sessionsMaxInactiveInterval || null,
-        "cookieName": options.cookieName || null,
-        "cookieDomain": options.cookieDomain || null,
-        "cookiePath": options.cookiePath || null,
-        "cookieMaxAge": options.cookieMaxAge || -1,
-        "httpOnlyCookies": options.httpOnlyCookies !== false,
-        "secureCookies": options.secureCookies === true,
-        "sameSiteCookies": options.sameSiteCookies || null,
-        "statistics": options.statistics === true,
-        "virtualHosts": options.virtualHosts,
-        "resourceHandler": true,
-        "acceptRanges": options.acceptRanges === true,
-        "dirAllowed": options.allowDirectoryListing === true,
-        "gzip": options.gzip === true,
-        "stylesheet": options.stylesheet || null,
-        "etags": options.etags !== false,
-        "cacheControl": options.cacheControl || null,
-        "otherGzipFileExtensions": options.gzipExtensions || null
-    });
+            "security": options.security === true,
+            "sessions": options.sessions === true,
+            "sessionsMaxInactiveInterval": options.sessionsMaxInactiveInterval || null,
+            "cookieName": options.cookieName || null,
+            "cookieDomain": options.cookieDomain || null,
+            "cookiePath": options.cookiePath || null,
+            "cookieMaxAge": options.cookieMaxAge || -1,
+            "httpOnlyCookies": options.httpOnlyCookies !== false,
+            "secureCookies": options.secureCookies === true,
+            "sameSiteCookies": options.sameSiteCookies || null,
+            "statistics": options.statistics === true,
+            "virtualHosts": options.virtualHosts
+        });
     context.serve(directory, initParameters);
     return this.addContext(context);
 };
